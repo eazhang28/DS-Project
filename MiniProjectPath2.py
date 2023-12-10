@@ -1,20 +1,27 @@
 import pandas
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from sklearn.model_selection import train_test_split as tts
-
+from sklearn.model_selection import cross_val_score as cvs
+from sklearn.model_selection import GridSearchCV as gscv
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import r2_score
+from sklearn.linear_model import RidgeCV
+from sklearn.metrics import mean_squared_error, r2_score
 
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OneHotEncoder
+
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 ''' 
 The following is the starting code for path2 for data reading to make your first step easier.
-'dataset_2' is the clean data for path1.
+'dataset_2' is the clean data for path 2.
 '''
 dataset_2 = pandas.read_csv('miniproject-f23-eazhang28/nyc_bicycle_counts_2016.csv')
 dataset_2['Brooklyn Bridge']      = pandas.to_numeric(dataset_2['Brooklyn Bridge'].replace(',','', regex=True))
@@ -42,154 +49,189 @@ dataset_2['Month'] = dataset_2['Month'].map(months_to_numeric)
 # Features: Brooklyn Bridge, Manhattan Bridge, Queesboro Bridge, Williamsburg Bridge
 # Target: Total
 
-mse1 = []
-coefdet1 = [] 
+def run_ridge_model(X, y, i):
+    X_train, X_test, y_train, y_test = tts(X, y, test_size=0.2, random_state=61)
 
-X1 = dataset_2[['Brooklyn Bridge','Manhattan Bridge','Queensboro Bridge']].to_numpy()
+    reg = RidgeCV(store_cv_values=True)
+    reg.fit(X_train, y_train)
 
-intercepts = np.ones((X1.shape[0],1))
-X1 = np.hstack((X1,intercepts))
+    y_pred = reg.predict(X_test)
+    
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    
+    plt.plot(y_test, '*', label='Actual')
+    plt.plot(y_pred, label='Predicted')
+    plt.title('Model %d Performance' % i)
+    plt.xlabel('Observations')
+    plt.ylabel('Traffic (Count of Bicyclists)')
+    plt.legend()
+    plt.show()
+    
+    return mse, r2
 
-y1 = dataset_2[['Total']].astype(int).to_numpy()
+bridges_combinations = [
+    ['Brooklyn Bridge', 'Manhattan Bridge', 'Queensboro Bridge'],
+    ['Brooklyn Bridge', 'Manhattan Bridge', 'Williamsburg Bridge'],
+    ['Brooklyn Bridge', 'Queensboro Bridge', 'Williamsburg Bridge'],
+    ['Manhattan Bridge', 'Queensboro Bridge', 'Williamsburg Bridge']
+]
 
-X1_train, X1_test, y1_train, y1_test, = tts(X1,y1,test_size=.2,random_state=61)
+mse_values = []
+r2_values = []
 
-reg1 = Ridge(alpha=0.5)
-reg1.fit(X1_train,y1_train)
-y1_pred = reg1.predict(X1_test)
-mse1.append(mean_squared_error(y1_test, y1_pred))
-coefdet1.append(r2_score(y1_test, y1_pred))
-plt.figure(1)
-plt.plot(y1_test,'*')
-plt.plot(y1_pred)
-plt.title('Brooklyn, Manhattan, and Queensboro Bridges Features')
-plt.xlabel('Time (Days)')
-plt.ylabel('Traffic (Count of Bicyclists)')
-plt.show()
+for i, bridges in enumerate(bridges_combinations, 1):
+    X_data = dataset_2[bridges].to_numpy()
+    intercepts = np.ones((X_data.shape[0], 1))
+    X_data = np.hstack((X_data, intercepts))
+    
+    y_data = dataset_2[['Total']].astype(int).to_numpy()
+    
+    mse, r2 = run_ridge_model(X_data, y_data, i)
+    mse_values.append(mse)
+    r2_values.append(r2)
+    
+    print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+    print(f"Results for Model {i}:")
+    print(f"MSE: {mse}")
+    print(f"R-squared: {r2}")
+    
+print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+print("Summary:")
+print("MSE values:", mse_values)
+print("R^2 values:", r2_values)
+print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
 
-X1 = dataset_2[['Brooklyn Bridge','Manhattan Bridge','Williamsburg Bridge']].to_numpy()
-
-intercepts = np.ones((X1.shape[0],1))
-X1 = np.hstack((X1,intercepts))
-
-y1 = dataset_2[['Total']].astype(int).to_numpy()
-
-X1_train, X1_test, y1_train, y1_test, = tts(X1,y1,test_size=.2,random_state=61)
-
-reg1 = Ridge(alpha=0.5)
-reg1.fit(X1_train,y1_train)
-y1_pred = reg1.predict(X1_test)
-mse1.append(mean_squared_error(y1_test, y1_pred))
-coefdet1.append(r2_score(y1_test, y1_pred))
-plt.figure(2)
-plt.plot(y1_test,'*')
-plt.plot(y1_pred)
-plt.title('Brooklyn, Manhattan, and Williamsburg Bridges Features')
-plt.xlabel('Time (Days)')
-plt.ylabel('Traffic (Count of Bicyclists)')
-plt.show()
-
-X1 = dataset_2[['Brooklyn Bridge','Queensboro Bridge','Williamsburg Bridge']].to_numpy()
-
-intercepts = np.ones((X1.shape[0],1))
-X1 = np.hstack((X1,intercepts))
-
-y1 = dataset_2[['Total']].astype(int).to_numpy()
-
-X1_train, X1_test, y1_train, y1_test, = tts(X1,y1,test_size=.2,random_state=61)
-
-reg1 = Ridge(alpha=0.5)
-reg1.fit(X1_train,y1_train)
-y1_pred = reg1.predict(X1_test)
-mse1.append(mean_squared_error(y1_test, y1_pred))
-coefdet1.append(r2_score(y1_test, y1_pred))
-plt.figure(3)
-plt.plot(y1_test,'*')
-plt.plot(y1_pred)
-plt.title('Brooklyn ,Queensboro, and Williamsburg Bridges Features')
-plt.xlabel('Time (Days)')
-plt.ylabel('Traffic (Count of Bicyclists)')
-plt.show()
-
-X1 = dataset_2[['Manhattan Bridge','Queensboro Bridge','Williamsburg Bridge']].to_numpy()
-
-intercepts = np.ones((X1.shape[0],1))
-X1 = np.hstack((X1,intercepts))
-
-y1 = dataset_2[['Total']].astype(int).to_numpy()
-
-X1_train, X1_test, y1_train, y1_test, = tts(X1,y1,test_size=.2,random_state=61)
-
-reg1 = Ridge(alpha=0.5)
-reg1.fit(X1_train,y1_train)
-y1_pred = reg1.predict(X1_test)
-mse1.append(mean_squared_error(y1_test, y1_pred))
-coefdet1.append(r2_score(y1_test, y1_pred))
-plt.figure(4)
-plt.plot(y1_test,'*')
-plt.plot(y1_pred)
-plt.title('Manhattan, Queensboro, and Williamsburg Bridges Features')
-plt.xlabel('Time (Days)')
-plt.ylabel('Traffic (Count of Bicyclists)')
-plt.show()
-
-
-print(mse1)
-print(coefdet1)
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # What Weather Conditions Should We Focus On?
 # Features: High Temp, Low Temp, Precipitation
 # Target: Total
 
-X2 = dataset_2[['High Temp', 'Low Temp', 'Precipitation']].to_numpy()
+X2 = dataset_2[['High Temp', 'Low Temp', 'Precipitation']].values
+y2 = dataset_2[['Total']].astype(int).values
 
-intercepts = np.ones((X2.shape[0],1))
-X2 = np.hstack((X2,intercepts))
+polyfts = PolynomialFeatures(degree=2,include_bias=False)
+X2_poly = polyfts.fit_transform(X2)
+scaler = StandardScaler()
+X2_scaled = scaler.fit_transform(X2_poly)
 
-y2 = dataset_2[['Total']].astype(int).to_numpy()
+X2_train, X2_test, y2_train, y2_test, = tts(X2_scaled, y2, test_size=.3, random_state=11)
 
-X2_train, X2_test, y2_train, y2_test, = tts(X2,y2,test_size=.3,random_state=11)
-
-reg2 = Ridge(alpha=0.75)
+reg2 = Ridge(alpha=0.01)
 reg2.fit(X2_train,y2_train)
+
 y2_pred = reg2.predict(X2_test)
 mse2 = mean_squared_error(y2_test, y2_pred)
 coefdet2 = r2_score(y2_test, y2_pred)
-print('Q2 MSE: %f' % mse2)
-print('Q2 R2: %f' % coefdet2)
+
+alpha_values = [0, 0.001 , 0.01, 0.1, 1, 10, 100, 1000]
+cv_scores = []
+for alpha in alpha_values:
+    reg_cv = Ridge(alpha=alpha)
+    scores = cvs(reg_cv, X2_scaled, y2, cv=5, scoring='r2')
+    cv_scores.append((alpha, scores.mean()))
+
+best_alpha = max(cv_scores, key=lambda x: x[1])[0]
+print('Best alpha from cross-validation:', best_alpha)
+
+param_grid = {'alpha': [0, 0.001 , 0.01, 0.1, 1, 10, 100, 1000]}
+ridge_grid = gscv(Ridge(), param_grid, cv=5, scoring='r2')
+ridge_grid.fit(X2_scaled, y2)
+
+best_alpha = ridge_grid.best_params_['alpha']
+print('Best alpha from grid search:', best_alpha)
+
+#using best alpha
+final_reg = Ridge(alpha=best_alpha)
+final_reg.fit(X2_scaled, y2)
+
+y2_pred_final = final_reg.predict(X2_test)
+
+mse_final = mean_squared_error(y2_test, y2_pred_final)
+coefdet_final = r2_score(y2_test, y2_pred_final)
+print('Final Ridge Regression MSE: %f' % mse_final)
+print('Final Ridge Regression R2: %f' % coefdet_final)
+
 plt.figure(5)
 plt.plot(y2_test,'*')
-plt.plot(y2_pred)
+plt.plot(y2_pred_final)
 plt.title('Weather Conditions')
-plt.xlabel('Time (Days)')
+plt.xlabel('Observations')
 plt.ylabel('Traffic (Count of Bicyclists)')
 plt.show()
 
 
-
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # What Day is it Based on the Traffic Numbers?
 # Features: Total
 # Target: Weekday
 
-X3 = dataset_2[['Total']].to_numpy()
 
-intercepts = np.ones((X3.shape[0],1))
-X3 = np.hstack((X3,intercepts))
 
-y3 = dataset_2[['Weekday']].astype(int).to_numpy()
+X = dataset_2[['Total']].to_numpy()
+y = dataset_2[['Weekday']].astype(int)
 
-X3_train, X3_test, y3_train, y3_test, = tts(X3,y3,test_size=.2,random_state=42)
+# One-hot encode the target variable
+encoder = OneHotEncoder(sparse=False)
+y_encoded = encoder.fit_transform(y)
 
+# TRAIN TEST SPLIT 
+X_train, X_test, y_train, y_test = tts(X, y, test_size=0.2, random_state=42)
+
+#BASELINE LOGISTIC REGRESSION
+scaler = StandardScaler()
+X3_trained_scaled = scaler.fit_transform(X_train)
+x_test_scaled = scaler.transform(X_test)
 reg3 = LogisticRegression(multi_class='multinomial',solver='lbfgs',max_iter=1000)
-reg3.fit(X3_train,y3_train)
-y3_pred = reg3.predict(X3_test)
-accuracy = accuracy_score(y3_test, y3_pred)
+reg3.fit(X_train, y_train)
+y3_pred = reg3.predict(X_test)
+accuracy = accuracy_score(y_test, y3_pred)
 print('Q3 Accuracy: %f' % accuracy)
 plt.figure(6)
-plt.plot(y3_test,'*')
+plt.plot(y_test,'x')
 plt.plot(y3_pred)
-plt.xlabel('Traffic (Count of Bicyclists)')
-plt.ylabel('Day of The Week')
+plt.xlabel('Observations')
+plt.ylabel('Day of the Week (Numerical)')
+plt.title('Multinomial Logisitic Regression Test vs. Prediction')
 plt.show()
 
-# print(dataset_2.to_string())
+#RESPLIT
+X_train, X_test, y_train, y_test = tts(X, y_encoded, test_size=0.2, random_state=42)
+
+# Data scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Build the neural network
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(y_encoded.shape[1], activation='softmax')
+])
+
+# Compile the model
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model
+history = model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, validation_split=0.2, verbose=1)
+
+# Evaluate the model on the test set
+y_pred_prob = model.predict(X_test_scaled)
+y_pred = np.argmax(y_pred_prob, axis=1)
+y_test_decoded = np.argmax(y_test, axis=1)
+
+accuracy = accuracy_score(y_test_decoded, y_pred)
+print(f'Model Accuracy: {accuracy}')
+
+# Plot training history
+plt.figure(7)
+plt.plot(history.history['accuracy'], label='Train Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.title('Training and ValidationAccuracy over Epochs')
+plt.legend()
+plt.show()
+
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
